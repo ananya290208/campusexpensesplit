@@ -1,10 +1,5 @@
 # 🎓 Campus Expense Split (Campus QuickSplit)
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.13+-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev)
-[![Firebase](https://img.shields.io/badge/Firebase-Firestore%20%26%20Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
-[![Hive](https://img.shields.io/badge/Storage-Hive%20Local%20Cache-yellowgreen?style=for-the-badge)](https://pub.dev/packages/hive)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
 
 An intelligent, collaborative expense sharing and debt simplification mobile application tailored for college students, roommates, event organizers, and campus project teams. **Campus Expense Split** eliminates awkward money conversations by automating bill splitting, tracking group contributions, visualizing spending habits, and optimizing debt settlements with minimal peer transactions.
 
