@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "314082432287",
+    "project_id": "campus-expense-split-av",
+    "storage_bucket": "campus-expense-split-av.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:314082432287:android:8f66e7bfe49e325b654c2a",
+        "android_client_info": {
+          "package_name": "com.example.campusexpensesplit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfHqPpRybg1e6yKIuWIDUMsj--IfFmrwo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
