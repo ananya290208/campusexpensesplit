@@ -119,19 +119,18 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settlement Optimization'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('groups')
-            .where('members', arrayContains: currentUserId)
-            .snapshots(),
-        builder: (context, groupSnapshot) {
-          if (groupSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('groups')
+          .where('members', arrayContains: currentUserId)
+          .snapshots(),
+      builder: (context, groupSnapshot) {
+        if (groupSnapshot.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Settlement Optimization')),
+            body: const Center(child: CircularProgressIndicator()),
+          );
+        }
 
           final groupDocs = groupSnapshot.data?.docs ?? [];
           final Map<String, String> groupNames = {};
@@ -151,7 +150,10 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
             stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
             builder: (context, expenseSnapshot) {
               if (expenseSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                return Scaffold(
+                  appBar: AppBar(title: const Text('Settlement Optimization')),
+                  body: const Center(child: CircularProgressIndicator()),
+                );
               }
 
               final allExpenses = expenseSnapshot.data?.docs ?? [];
@@ -234,25 +236,28 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
               final double totalDueToReceive = paymentsToReceive.fold(0.0, (acc, item) => acc + (item['amount'] as double));
 
               if (paymentsToMake.isEmpty && paymentsToReceive.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle_outline, size: 72, color: Colors.green.shade400),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'You are all settled up!',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'No pending payments or debts for your joined groups.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                return Scaffold(
+                  appBar: AppBar(title: const Text('Settlement Optimization')),
+                  body: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 72, color: Colors.green.shade400),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'You are all settled up!',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'No pending payments or debts for your joined groups.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -613,7 +618,6 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
             },
           );
         },
-      ),
-    );
+      );
   }
 }
