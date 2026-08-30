@@ -4,6 +4,7 @@
 An intelligent, collaborative expense sharing and debt simplification mobile application tailored for college students, roommates, event organizers, and campus project teams. **Campus Expense Split** eliminates awkward money conversations by automating bill splitting, tracking group contributions, visualizing spending habits, and optimizing debt settlements with minimal peer transactions.
 
 ---
+Access Campus Expense Split at: https://ananya290208.github.io/campusexpensesplit/
 
 ## 🌟 Key Features
 
