@@ -258,129 +258,47 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                 );
               }
 
-              return ListView(
-                padding: const EdgeInsets.all(16.0),
-                children: [
-                  // Overview Summary Card
-                  Card(
-                    color: totalDueToPay > 0 ? Colors.red.shade50 : Colors.green.shade50,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: totalDueToPay > 0 ? Colors.red.shade200 : Colors.green.shade200,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Row(
-                        children: [
-                          Icon(
-                            totalDueToPay > 0 ? Icons.payment : Icons.done_all,
-                            color: totalDueToPay > 0 ? Colors.red.shade800 : Colors.green.shade800,
-                            size: 32,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  totalDueToPay > 0
-                                      ? 'Total You Need to Pay'
-                                      : 'No Payments Due from You',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: totalDueToPay > 0 ? Colors.red.shade900 : Colors.green.shade900,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '\$${totalDueToPay.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.bold,
-                                    color: totalDueToPay > 0 ? Colors.red.shade800 : Colors.green.shade800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (totalDueToReceive > 0)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                const Text('To Receive', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text(
-                                  '\$${totalDueToReceive.toStringAsFixed(2)}',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Section 1: Payments YOU need to make
-                  const Text(
-                    'Payments You Need to Make',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Tap "Settle Up" to record your payment:',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (paymentsToMake.isEmpty)
-                    Card(
-                      elevation: 1,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      child: const Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check, color: Colors.green),
-                            SizedBox(width: 10),
-                            Text('You have no payments to make! 🎉', style: TextStyle(fontWeight: FontWeight.w500)),
-                          ],
+              return DefaultTabController(
+                length: 2,
+                child: Scaffold(
+                  appBar: AppBar(
+                    title: const Text('Settlement Optimization'),
+                    bottom: TabBar(
+                      tabs: [
+                        Tab(
+                          icon: const Icon(Icons.arrow_upward, color: Colors.redAccent),
+                          text: 'What I Owe (${paymentsToMake.length})',
                         ),
-                      ),
-                    )
-                  else
-                    ...paymentsToMake.map((tx) {
-                      final toUid = tx['to'] as String;
-                      final amount = tx['amount'] as double;
-                      final groupId = tx['groupId'] as String;
-                      final groupName = tx['groupName'] as String;
-                      final paymentKey = '$currentUserId pays $toUid in $groupId';
-                      final isProcessing = _isLoading && _processingPaymentFor == paymentKey;
-
-                      return FutureBuilder<String>(
-                        future: _resolveUserName(toUid),
-                        builder: (context, nameSnapshot) {
-                          final recipientName = nameSnapshot.data ?? toUid;
-
-                          return Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 6.0),
+                        Tab(
+                          icon: const Icon(Icons.arrow_downward, color: Colors.greenAccent),
+                          text: 'Owed to Me (${paymentsToReceive.length})',
+                        ),
+                      ],
+                    ),
+                  ),
+                  body: TabBarView(
+                    children: [
+                      // TAB 1: What I Owe (Payments YOU need to make)
+                      ListView(
+                        padding: const EdgeInsets.all(16.0),
+                        children: [
+                          Card(
+                            color: totalDueToPay > 0 ? Colors.red.shade50 : Colors.green.shade50,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: totalDueToPay > 0 ? Colors.red.shade200 : Colors.green.shade200,
+                              ),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.all(14.0),
+                              padding: const EdgeInsets.all(16.0),
                               child: Row(
                                 children: [
-                                  CircleAvatar(
-                                    backgroundColor: Colors.red.shade100,
-                                    child: const Icon(Icons.arrow_upward, color: Colors.red),
+                                  Icon(
+                                    totalDueToPay > 0 ? Icons.payment : Icons.check_circle,
+                                    color: totalDueToPay > 0 ? Colors.red.shade800 : Colors.green.shade800,
+                                    size: 32,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -388,113 +306,309 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          'Pay $recipientName',
-                                          style: const TextStyle(
+                                          totalDueToPay > 0
+                                              ? 'Total You Need to Pay'
+                                              : 'You Don\'t Owe Anything!',
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 15,
+                                            color: totalDueToPay > 0 ? Colors.red.shade900 : Colors.green.shade900,
                                           ),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          'Group: $groupName',
-                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '\$${amount.toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                            fontSize: 16,
+                                          '\$${totalDueToPay.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            fontSize: 22,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.red,
+                                            color: totalDueToPay > 0 ? Colors.red.shade800 : Colors.green.shade800,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
-                                  ElevatedButton.icon(
-                                    onPressed: _isLoading
-                                        ? null
-                                        : () => _simulateDummySettlement(
-                                              from: currentUserId,
-                                              to: toUid,
-                                              amount: amount,
-                                              groupId: groupId,
-                                              groupName: groupName,
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Payments You Need to Make',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Tap "Settle Up" to send money or record payment:',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          if (paymentsToMake.isEmpty)
+                            Card(
+                              elevation: 1,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: Padding(
+                                padding: const EdgeInsets.all(24.0),
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.check_circle_outline, color: Colors.green.shade400, size: 54),
+                                    const SizedBox(height: 12),
+                                    const Text(
+                                      'You are all settled up!',
+                                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Text(
+                                      'You do not owe any money to anyone in your joined groups.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            ...paymentsToMake.map((tx) {
+                              final toUid = tx['to'] as String;
+                              final amount = tx['amount'] as double;
+                              final groupId = tx['groupId'] as String;
+                              final groupName = tx['groupName'] as String;
+                              final paymentKey = '$currentUserId pays $toUid in $groupId';
+                              final isProcessing = _isLoading && _processingPaymentFor == paymentKey;
+
+                              return FutureBuilder<String>(
+                                future: _resolveUserName(toUid),
+                                builder: (context, nameSnapshot) {
+                                  final recipientName = nameSnapshot.data ?? toUid;
+
+                                  return Card(
+                                    elevation: 2,
+                                    margin: const EdgeInsets.symmetric(vertical: 6.0),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(14.0),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor: Colors.red.shade100,
+                                            child: const Icon(Icons.arrow_upward, color: Colors.red),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Pay $recipientName',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Group: $groupName',
+                                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '\$${amount.toStringAsFixed(2)}',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.red,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                    icon: isProcessing
-                                        ? const SizedBox(
-                                            width: 14,
-                                            height: 14,
-                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                          )
-                                        : const Icon(Icons.payment, size: 16),
-                                    label: Text(isProcessing ? 'Processing...' : 'Settle Up'),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.deepPurple,
-                                      foregroundColor: Colors.white,
+                                          ),
+                                          ElevatedButton.icon(
+                                            onPressed: _isLoading
+                                                ? null
+                                                : () => _simulateDummySettlement(
+                                                      from: currentUserId,
+                                                      to: toUid,
+                                                      amount: amount,
+                                                      groupId: groupId,
+                                                      groupName: groupName,
+                                                    ),
+                                            icon: isProcessing
+                                                ? const SizedBox(
+                                                    width: 14,
+                                                    height: 14,
+                                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                                  )
+                                                : const Icon(Icons.payment, size: 16),
+                                            label: Text(isProcessing ? 'Processing...' : 'Settle Up'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.deepPurple,
+                                              foregroundColor: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }),
+                        ],
+                      ),
+
+                      // TAB 2: What Others Owe Me (To Receive)
+                      ListView(
+                        padding: const EdgeInsets.all(16.0),
+                        children: [
+                          Card(
+                            color: Colors.green.shade50,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.green.shade200),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.savings, color: Colors.green.shade800, size: 32),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Total Owed to You',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green.shade900,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '\$${totalDueToReceive.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green.shade800,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        },
-                      );
-                    }),
-
-                  const SizedBox(height: 24),
-
-                  // Section 2: Payments You Will Receive
-                  if (paymentsToReceive.isNotEmpty) ...[
-                    const Text(
-                      'Payments You Are Expecting',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Members who owe you money in your joined groups:',
-                      style: TextStyle(color: Colors.grey, fontSize: 13),
-                    ),
-                    const SizedBox(height: 12),
-                    ...paymentsToReceive.map((tx) {
-                      final fromUid = tx['from'] as String;
-                      final amount = tx['amount'] as double;
-                      final groupName = tx['groupName'] as String;
-
-                      return FutureBuilder<String>(
-                        future: _resolveUserName(fromUid),
-                        builder: (context, nameSnapshot) {
-                          final debtorName = nameSnapshot.data ?? fromUid;
-
-                          return Card(
-                            elevation: 1,
-                            margin: const EdgeInsets.symmetric(vertical: 4.0),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.green.shade100,
-                                child: const Icon(Icons.arrow_downward, color: Colors.green),
-                              ),
-                              title: Text(
-                                '$debtorName owes you',
-                                style: const TextStyle(fontWeight: FontWeight.w600),
-                              ),
-                              subtitle: Text('Group: $groupName', style: const TextStyle(fontSize: 12)),
-                              trailing: Text(
-                                '\$${amount.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Payments You Are Expecting',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Members who owe you money in your joined groups:',
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                          const SizedBox(height: 12),
+                          if (paymentsToReceive.isEmpty)
+                            Card(
+                              elevation: 1,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: const Padding(
+                                padding: EdgeInsets.all(24.0),
+                                child: Center(
+                                  child: Text(
+                                    'No one currently owes you money.',
+                                    style: TextStyle(color: Colors.grey, fontSize: 14),
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    }),
-                  ],
-                ],
+                            )
+                          else
+                            ...paymentsToReceive.map((tx) {
+                              final fromUid = tx['from'] as String;
+                              final amount = tx['amount'] as double;
+                              final groupId = tx['groupId'] as String;
+                              final groupName = tx['groupName'] as String;
+                              final paymentKey = '$fromUid pays $currentUserId in $groupId';
+                              final isProcessing = _isLoading && _processingPaymentFor == paymentKey;
+
+                              return FutureBuilder<String>(
+                                future: _resolveUserName(fromUid),
+                                builder: (context, nameSnapshot) {
+                                  final debtorName = nameSnapshot.data ?? fromUid;
+
+                                  return Card(
+                                    elevation: 2,
+                                    margin: const EdgeInsets.symmetric(vertical: 6.0),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(14.0),
+                                      child: Row(
+                                        children: [
+                                          CircleAvatar(
+                                            backgroundColor: Colors.green.shade100,
+                                            child: const Icon(Icons.arrow_downward, color: Colors.green),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  '$debtorName owes you',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Group: $groupName',
+                                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '\$${amount.toStringAsFixed(2)}',
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.green,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          OutlinedButton(
+                                            onPressed: _isLoading
+                                                ? null
+                                                : () => _simulateDummySettlement(
+                                                      from: fromUid,
+                                                      to: currentUserId,
+                                                      amount: amount,
+                                                      groupId: groupId,
+                                                      groupName: groupName,
+                                                    ),
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: Colors.teal.shade800,
+                                              side: BorderSide(color: Colors.teal.shade300),
+                                            ),
+                                            child: Text(isProcessing ? 'Recording...' : 'Mark Received'),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           );
