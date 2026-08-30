@@ -45,9 +45,12 @@ class ExpenseProvider extends ChangeNotifier {
 
     _isDarkMode = _settingsBox.get('isDarkMode', defaultValue: false);
 
-    // Silent Anonymous Firebase Authentication
-    UserCredential userCredential = await FirebaseAuth.instance.signInAnonymously();
-    _currentUserId = userCredential.user?.uid;
+    // Listen to Firebase Auth state changes
+    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    FirebaseAuth.instance.authStateChanges().listen((user) {
+      _currentUserId = user?.uid;
+      notifyListeners();
+    });
 
     _loadData();
   } catch (e) {
