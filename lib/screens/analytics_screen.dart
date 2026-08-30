@@ -6,6 +6,95 @@ import 'dart:math' as math;
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
 
+  static final Map<String, Color> _categoryColorMap = {
+    'Movie': Colors.purple,
+    'Food & Dining': Colors.teal,
+    'Utilities': Colors.orange.shade800,
+    'Travel': Colors.blue.shade700,
+    'Printout': Colors.pink.shade600,
+    'Subscription': Colors.indigo.shade600,
+    'Others': Colors.blueGrey.shade600,
+  };
+
+  static final List<Color> _fallbackPalette = [
+    Colors.deepPurple,
+    Colors.teal,
+    Colors.orange,
+    Colors.blue,
+    Colors.pink,
+    Colors.amber.shade800,
+    Colors.cyan.shade700,
+    Colors.indigo,
+    Colors.green.shade600,
+  ];
+
+  static Color _getCategoryColor(String category, int index) {
+    if (_categoryColorMap.containsKey(category)) {
+      return _categoryColorMap[category]!;
+    }
+    return _fallbackPalette[index % _fallbackPalette.length];
+  }
+
+  static String _resolveCategory(Map<String, dynamic> data) {
+    // 1. Check direct 'category' field in Firestore document
+    final dynamic catField = data['category'];
+    if (catField != null) {
+      if (catField is String && catField.trim().isNotEmpty) {
+        final trimmed = catField.trim();
+        final lower = trimmed.toLowerCase();
+        if (lower.contains('movie') || lower.contains('cinema') || lower.contains('film')) {
+          return 'Movie';
+        } else if (lower.contains('food') || lower.contains('dining') || lower.contains('restaurant')) {
+          return 'Food & Dining';
+        } else if (lower.contains('utilit') || lower.contains('bill')) {
+          return 'Utilities';
+        } else if (lower.contains('travel') || lower.contains('auto') || lower.contains('cab') || lower.contains('transport')) {
+          return 'Travel';
+        } else if (lower.contains('print') || lower.contains('xerox') || lower.contains('stationery')) {
+          return 'Printout';
+        } else if (lower.contains('subscript')) {
+          return 'Subscription';
+        } else if (lower == 'others' || lower == 'other' || lower == 'general') {
+          return 'Others';
+        }
+        return trimmed;
+      } else if (catField is int) {
+        // Mapped to ExpenseCategory index: auto, subscription, food, printout, general
+        switch (catField) {
+          case 0:
+            return 'Travel';
+          case 1:
+            return 'Subscription';
+          case 2:
+            return 'Food & Dining';
+          case 3:
+            return 'Printout';
+          case 4:
+          default:
+            return 'Others';
+        }
+      }
+    }
+
+    // 2. Smart fallback based on expense title if category field was not set
+    final title = (data['title'] ?? '').toString().toLowerCase();
+    if (title.contains('movie') || title.contains('cinema') || title.contains('theatre') || title.contains('film') || title.contains('show')) {
+      return 'Movie';
+    } else if (title.contains('food') || title.contains('dinner') || title.contains('lunch') || title.contains('breakfast') || title.contains('cafe') || title.contains('pizza') || title.contains('burger') || title.contains('canteen') || title.contains('mess') || title.contains('snack') || title.contains('chai') || title.contains('tea') || title.contains('coffee') || title.contains('swiggy') || title.contains('zomato')) {
+      return 'Food & Dining';
+    } else if (title.contains('bill') || title.contains('electricity') || title.contains('rent') || title.contains('wifi') || title.contains('water') || title.contains('gas') || title.contains('recharge') || title.contains('maintenance')) {
+      return 'Utilities';
+    } else if (title.contains('uber') || title.contains('ola') || title.contains('auto') || title.contains('cab') || title.contains('train') || title.contains('metro') || title.contains('bus') || title.contains('travel') || title.contains('petrol') || title.contains('fuel')) {
+      return 'Travel';
+    } else if (title.contains('print') || title.contains('xerox') || title.contains('stationery') || title.contains('notes') || title.contains('assignment') || title.contains('copy')) {
+      return 'Printout';
+    } else if (title.contains('netflix') || title.contains('prime') || title.contains('spotify') || title.contains('youtube') || title.contains('hotstar') || title.contains('subscription')) {
+      return 'Subscription';
+    }
+
+    return 'Others';
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -18,20 +107,32 @@ class AnalyticsScreen extends StatelessWidget {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
 
           final docs = snapshot.data!.docs;
+          if (docs.isEmpty) {
+            return const Center(
+              child: Text(
+                'No expenses found yet.\nAdd expenses to view visual analytics!',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            );
+          }
+
           double myTotal = 0;
           double groupTotal = 0;
           Map<String, double> monthlyData = {};
           Map<String, double> categoryData = {
+            'Movie': 0,
             'Food & Dining': 0,
             'Utilities': 0,
             'Travel': 0,
+            'Printout': 0,
+            'Subscription': 0,
             'Others': 0,
           };
 
           for (var doc in docs) {
             final data = doc.data() as Map<String, dynamic>;
             final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
-            final title = (data['title'] ?? '').toString().toLowerCase();
             final createdAt = data['createdAt'];
 
             groupTotal += amt;
@@ -39,25 +140,27 @@ class AnalyticsScreen extends StatelessWidget {
               myTotal += amt;
             }
 
-            // Monthly breakdown estimation based on timestamp
-            String monthKey = 'Current';
+            // Monthly breakdown calculation based on timestamp
+            String monthKey = 'Recent';
             if (createdAt is Timestamp) {
               DateTime date = createdAt.toDate();
               monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
             }
             monthlyData[monthKey] = (monthlyData[monthKey] ?? 0.0) + amt;
 
-            // Simple categorization simulation based on title keywords
-            if (title.contains('food') || title.contains('dinner') || title.contains('lunch') || title.contains('cafe')) {
-              categoryData['Food & Dining'] = (categoryData['Food & Dining']! + amt);
-            } else if (title.contains('bill') || title.contains('electricity') || title.contains('rent') || title.contains('wifi')) {
-              categoryData['Utilities'] = (categoryData['Utilities']! + amt);
-            } else if (title.contains('uber') || title.contains('cab') || title.contains('train') || title.contains('travel')) {
-              categoryData['Travel'] = (categoryData['Travel']! + amt);
-            } else {
-              categoryData['Others'] = (categoryData['Others']! + amt);
-            }
+            // Resolve proper category
+            final category = _resolveCategory(data);
+            categoryData[category] = (categoryData[category] ?? 0.0) + amt;
           }
+
+          // Build dynamic color mapping for active categories
+          Map<String, Color> activeCategoryColors = {};
+          int colorIndex = 0;
+          categoryData.forEach((cat, val) {
+            if (val > 0) {
+              activeCategoryColors[cat] = _getCategoryColor(cat, colorIndex++);
+            }
+          });
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -78,13 +181,13 @@ class AnalyticsScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 _buildCustomBarChart(monthlyData, Colors.indigo),
                 const SizedBox(height: 28),
-                const Text('Expense Category Pie Chart', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text('Expense Category Distribution', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 12),
-                _buildPieChartCard(categoryData, groupTotal),
+                _buildPieChartCard(categoryData, groupTotal, activeCategoryColors),
                 const SizedBox(height: 28),
                 const Text('Detailed Category Breakdown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 12),
-                _buildCategoryBreakdown(categoryData, groupTotal),
+                _buildCategoryBreakdown(categoryData, groupTotal, activeCategoryColors),
               ],
             ),
           );
@@ -158,9 +261,20 @@ class AnalyticsScreen extends StatelessWidget {
     );
   }
 
-  // Custom Pie Chart Widget with Legend
-  Widget _buildPieChartCard(Map<String, double> categories, double total) {
-    final colors = [Colors.purple, Colors.teal, Colors.orange, Colors.blue];
+  // Custom Pie Chart Widget with Legend & Matched Colors
+  Widget _buildPieChartCard(Map<String, double> categories, double total, Map<String, Color> categoryColors) {
+    final activeEntries = categories.entries.where((e) => e.value > 0).toList();
+
+    if (activeEntries.isEmpty || total <= 0) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: const Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Center(child: Text('No category data available yet.', style: TextStyle(color: Colors.grey))),
+        ),
+      );
+    }
 
     return Card(
       elevation: 2,
@@ -173,7 +287,11 @@ class AnalyticsScreen extends StatelessWidget {
               height: 180,
               width: 180,
               child: CustomPaint(
-                painter: _PieChartPainter(categories: categories, total: total, colors: colors),
+                painter: _PieChartPainter(
+                  categories: categories,
+                  total: total,
+                  categoryColors: categoryColors,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -181,16 +299,19 @@ class AnalyticsScreen extends StatelessWidget {
               spacing: 16.0,
               runSpacing: 8.0,
               alignment: WrapAlignment.center,
-              children: categories.entries.map((entry) {
-                int index = categories.keys.toList().indexOf(entry.key);
-                Color color = colors[index % colors.length];
+              children: activeEntries.map((entry) {
+                final color = categoryColors[entry.key] ?? Colors.deepPurple;
+                final percentage = (entry.value / total) * 100;
 
                 return Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
                     const SizedBox(width: 6),
-                    Text(entry.key, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                    Text(
+                      '${entry.key} (${percentage.toStringAsFixed(0)}%)',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
                   ],
                 );
               }).toList(),
@@ -202,9 +323,21 @@ class AnalyticsScreen extends StatelessWidget {
   }
 
   // Custom visual category breakdown bars
-  Widget _buildCategoryBreakdown(Map<String, double> categories, double total) {
-    final colors = [Colors.purple, Colors.teal, Colors.orange, Colors.blue];
-    int index = 0;
+  Widget _buildCategoryBreakdown(Map<String, double> categories, double total, Map<String, Color> categoryColors) {
+    final activeEntries = categories.entries.where((e) => e.value > 0).toList();
+    // Sort highest spending category first
+    activeEntries.sort((a, b) => b.value.compareTo(a.value));
+
+    if (activeEntries.isEmpty || total <= 0) {
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: const Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Center(child: Text('No breakdown data available.', style: TextStyle(color: Colors.grey))),
+        ),
+      );
+    }
 
     return Card(
       elevation: 2,
@@ -212,11 +345,10 @@ class AnalyticsScreen extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          children: categories.entries.map((entry) {
+          children: activeEntries.map((entry) {
             double catVal = entry.value;
             double percentage = total > 0 ? (catVal / total) : 0.0;
-            Color barColor = colors[index % colors.length];
-            index++;
+            Color barColor = categoryColors[entry.key] ?? Colors.deepPurple;
 
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -251,13 +383,17 @@ class AnalyticsScreen extends StatelessWidget {
   }
 }
 
-// Custom Painter to render the clean proportioned arc segments for the pie chart
+// Custom Painter to render clean proportioned arc segments for the pie chart
 class _PieChartPainter extends CustomPainter {
   final Map<String, double> categories;
   final double total;
-  final List<Color> colors;
+  final Map<String, Color> categoryColors;
 
-  _PieChartPainter({required this.categories, required this.total, required this.colors});
+  _PieChartPainter({
+    required this.categories,
+    required this.total,
+    required this.categoryColors,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -267,21 +403,32 @@ class _PieChartPainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.white
+      ..strokeWidth = 2.0
+      ..isAntiAlias = true;
+
     if (total <= 0) {
       paint.color = Colors.grey.shade300;
       canvas.drawArc(rect, 0, 2 * math.pi, true, paint);
       return;
     }
 
-    int index = 0;
-    categories.forEach((key, value) {
+    final activeCount = categories.values.where((v) => v > 0).length;
+
+    categories.forEach((category, value) {
       if (value > 0) {
         final sweepAngle = (value / total) * 2 * math.pi;
-        paint.color = colors[index % colors.length];
+        paint.color = categoryColors[category] ?? Colors.deepPurple;
         canvas.drawArc(rect, startAngle, sweepAngle, true, paint);
+
+        if (activeCount > 1) {
+          canvas.drawArc(rect, startAngle, sweepAngle, true, borderPaint);
+        }
+
         startAngle += sweepAngle;
       }
-      index++;
     });
   }
 
