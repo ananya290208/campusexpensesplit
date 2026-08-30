@@ -51,6 +51,42 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
               final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
               final splitType = data['splitType'] ?? 'uniform';
 
+              final category = (data['category'] ?? 'Others').toString();
+
+              IconData icon;
+              Color iconColor;
+              Color avatarBg;
+
+              if (category.contains('Food')) {
+                icon = Icons.restaurant;
+                iconColor = Colors.teal;
+                avatarBg = Colors.teal.shade50;
+              } else if (category.contains('Movie')) {
+                icon = Icons.movie;
+                iconColor = Colors.purple;
+                avatarBg = Colors.purple.shade50;
+              } else if (category.contains('Utilities')) {
+                icon = Icons.bolt;
+                iconColor = Colors.orange.shade800;
+                avatarBg = Colors.orange.shade50;
+              } else if (category.contains('Travel')) {
+                icon = Icons.directions_car;
+                iconColor = Colors.blue.shade700;
+                avatarBg = Colors.blue.shade50;
+              } else if (category.contains('Printouts')) {
+                icon = Icons.print;
+                iconColor = Colors.pink.shade600;
+                avatarBg = Colors.pink.shade50;
+              } else if (category.contains('Subscriptions')) {
+                icon = Icons.subscriptions;
+                iconColor = Colors.indigo.shade600;
+                avatarBg = Colors.indigo.shade50;
+              } else {
+                icon = Icons.receipt_long;
+                iconColor = Colors.deepPurple;
+                avatarBg = Colors.deepPurple.shade50;
+              }
+
               return Dismissible(
                 key: Key(docId),
                 direction: DismissDirection.endToStart,
@@ -119,16 +155,32 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                   ),
                   child: ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: Colors.deepPurple.shade100,
-                      child: const Icon(Icons.receipt_long, color: Colors.deepPurple),
+                      backgroundColor: avatarBg,
+                      child: Icon(icon, color: iconColor),
                     ),
                     title: Text(
                       title,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(
-                      'Split Type: ${splitType.toString().toUpperCase()}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    subtitle: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: iconColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: iconColor),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '• ${splitType.toString().toUpperCase()}',
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                      ],
                     ),
                     trailing: Text(
                       '\$${amount.toStringAsFixed(2)}',

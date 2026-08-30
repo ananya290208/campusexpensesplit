@@ -22,9 +22,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   String? _selectedGroupName;
   List<Map<String, String>> _groupMembers = []; // Contains {uid, name}
 
-  // Expense Category Selection with 'Movie' as default
-  String _selectedCategory = 'Movie';
-  final List<String> _categories = ['Movie', 'Food & Dining', 'Utilities', 'Travel', 'Others'];
+  // Expense Category Selection
+  String _selectedCategory = 'Food & Dining';
+  final List<String> _categories = [
+    'Food & Dining',
+    'Movie & Entertainment',
+    'Utilities & Bills',
+    'Travel & Commute',
+    'Printouts & Stationery',
+    'Subscriptions',
+    'General / Others',
+  ];
 
   SplitType _selectedSplitType = SplitType.uniform;
   final Map<String, TextEditingController> _splitControllers = {};
@@ -502,17 +510,50 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Expense Category Dropdown with 'Movie' selected by default
+            // Expense Category Dropdown
             DropdownButtonFormField<String>(
               value: _selectedCategory,
               decoration: const InputDecoration(
                 labelText: 'Expense Category',
+                prefixIcon: Icon(Icons.category_outlined),
                 border: OutlineInputBorder(),
               ),
               items: _categories.map((category) {
+                IconData icon;
+                Color iconColor;
+                if (category.contains('Food')) {
+                  icon = Icons.restaurant;
+                  iconColor = Colors.teal;
+                } else if (category.contains('Movie')) {
+                  icon = Icons.movie;
+                  iconColor = Colors.purple;
+                } else if (category.contains('Utilities')) {
+                  icon = Icons.bolt;
+                  iconColor = Colors.orange.shade800;
+                } else if (category.contains('Travel')) {
+                  icon = Icons.directions_car;
+                  iconColor = Colors.blue.shade700;
+                } else if (category.contains('Printouts')) {
+                  icon = Icons.print;
+                  iconColor = Colors.pink.shade600;
+                } else if (category.contains('Subscriptions')) {
+                  icon = Icons.subscriptions;
+                  iconColor = Colors.indigo.shade600;
+                } else {
+                  icon = Icons.more_horiz;
+                  iconColor = Colors.blueGrey;
+                }
+
                 return DropdownMenuItem(
                   value: category,
-                  child: Text(category),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(icon, size: 18, color: iconColor),
+                      const SizedBox(width: 8),
+                      Text(category),
+                    ],
+                  ),
                 );
               }).toList(),
               onChanged: (val) {

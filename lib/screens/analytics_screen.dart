@@ -7,25 +7,26 @@ class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
 
   static final Map<String, Color> _categoryColorMap = {
-    'Movie': Colors.purple,
     'Food & Dining': Colors.teal,
-    'Utilities': Colors.orange.shade800,
-    'Travel': Colors.blue.shade700,
-    'Printout': Colors.pink.shade600,
-    'Subscription': Colors.indigo.shade600,
-    'Others': Colors.blueGrey.shade600,
+    'Movie & Entertainment': Colors.purple,
+    'Utilities & Bills': Colors.orange.shade800,
+    'Travel & Commute': Colors.blue.shade700,
+    'Printouts & Stationery': Colors.pink.shade600,
+    'Subscriptions': Colors.indigo.shade600,
+    'General / Others': Colors.blueGrey.shade600,
   };
 
   static final List<Color> _fallbackPalette = [
-    Colors.deepPurple,
     Colors.teal,
-    Colors.orange,
-    Colors.blue,
-    Colors.pink,
-    Colors.amber.shade800,
+    Colors.purple,
+    Colors.orange.shade800,
+    Colors.blue.shade700,
+    Colors.pink.shade600,
+    Colors.indigo.shade600,
+    Colors.deepPurple,
     Colors.cyan.shade700,
-    Colors.indigo,
     Colors.green.shade600,
+    Colors.amber.shade800,
   ];
 
   static Color _getCategoryColor(String category, int index) {
@@ -42,57 +43,57 @@ class AnalyticsScreen extends StatelessWidget {
       if (catField is String && catField.trim().isNotEmpty) {
         final trimmed = catField.trim();
         final lower = trimmed.toLowerCase();
-        if (lower.contains('movie') || lower.contains('cinema') || lower.contains('film')) {
-          return 'Movie';
-        } else if (lower.contains('food') || lower.contains('dining') || lower.contains('restaurant')) {
+        if (lower.contains('food') || lower.contains('dining') || lower.contains('restaurant') || lower.contains('cafe') || lower.contains('meal') || lower.contains('snack') || lower.contains('chai') || lower.contains('tea') || lower.contains('coffee')) {
           return 'Food & Dining';
-        } else if (lower.contains('utilit') || lower.contains('bill')) {
-          return 'Utilities';
-        } else if (lower.contains('travel') || lower.contains('auto') || lower.contains('cab') || lower.contains('transport')) {
-          return 'Travel';
-        } else if (lower.contains('print') || lower.contains('xerox') || lower.contains('stationery')) {
-          return 'Printout';
-        } else if (lower.contains('subscript')) {
-          return 'Subscription';
-        } else if (lower == 'others' || lower == 'other' || lower == 'general') {
-          return 'Others';
+        } else if (lower.contains('movie') || lower.contains('cinema') || lower.contains('film') || lower.contains('entertainment') || lower.contains('show')) {
+          return 'Movie & Entertainment';
+        } else if (lower.contains('utilit') || lower.contains('bill') || lower.contains('electricity') || lower.contains('rent') || lower.contains('wifi') || lower.contains('water') || lower.contains('gas')) {
+          return 'Utilities & Bills';
+        } else if (lower.contains('travel') || lower.contains('auto') || lower.contains('cab') || lower.contains('commute') || lower.contains('transport') || lower.contains('uber') || lower.contains('ola') || lower.contains('train') || lower.contains('bus') || lower.contains('petrol')) {
+          return 'Travel & Commute';
+        } else if (lower.contains('print') || lower.contains('xerox') || lower.contains('stationery') || lower.contains('book') || lower.contains('notes')) {
+          return 'Printouts & Stationery';
+        } else if (lower.contains('subscript') || lower.contains('netflix') || lower.contains('spotify') || lower.contains('membership')) {
+          return 'Subscriptions';
+        } else if (lower.contains('other') || lower.contains('general')) {
+          return 'General / Others';
         }
         return trimmed;
       } else if (catField is int) {
         // Mapped to ExpenseCategory index: auto, subscription, food, printout, general
         switch (catField) {
           case 0:
-            return 'Travel';
+            return 'Travel & Commute';
           case 1:
-            return 'Subscription';
+            return 'Subscriptions';
           case 2:
             return 'Food & Dining';
           case 3:
-            return 'Printout';
+            return 'Printouts & Stationery';
           case 4:
           default:
-            return 'Others';
+            return 'General / Others';
         }
       }
     }
 
-    // 2. Smart fallback based on expense title if category field was not set
+    // 2. Comprehensive keyword fallback based on expense title if category field was omitted or blank
     final title = (data['title'] ?? '').toString().toLowerCase();
-    if (title.contains('movie') || title.contains('cinema') || title.contains('theatre') || title.contains('film') || title.contains('show')) {
-      return 'Movie';
-    } else if (title.contains('food') || title.contains('dinner') || title.contains('lunch') || title.contains('breakfast') || title.contains('cafe') || title.contains('pizza') || title.contains('burger') || title.contains('canteen') || title.contains('mess') || title.contains('snack') || title.contains('chai') || title.contains('tea') || title.contains('coffee') || title.contains('swiggy') || title.contains('zomato')) {
+    if (title.contains('food') || title.contains('dinner') || title.contains('lunch') || title.contains('breakfast') || title.contains('cafe') || title.contains('pizza') || title.contains('burger') || title.contains('canteen') || title.contains('mess') || title.contains('snack') || title.contains('chai') || title.contains('tea') || title.contains('coffee') || title.contains('swiggy') || title.contains('zomato') || title.contains('mcdonald') || title.contains('domino') || title.contains('biryani') || title.contains('roll') || title.contains('dosa') || title.contains('maggi') || title.contains('grocer') || title.contains('milk') || title.contains('bread') || title.contains('egg') || title.contains('fruit') || title.contains('vegetable') || title.contains('market') || title.contains('eat') || title.contains('sweet')) {
       return 'Food & Dining';
-    } else if (title.contains('bill') || title.contains('electricity') || title.contains('rent') || title.contains('wifi') || title.contains('water') || title.contains('gas') || title.contains('recharge') || title.contains('maintenance')) {
-      return 'Utilities';
-    } else if (title.contains('uber') || title.contains('ola') || title.contains('auto') || title.contains('cab') || title.contains('train') || title.contains('metro') || title.contains('bus') || title.contains('travel') || title.contains('petrol') || title.contains('fuel')) {
-      return 'Travel';
-    } else if (title.contains('print') || title.contains('xerox') || title.contains('stationery') || title.contains('notes') || title.contains('assignment') || title.contains('copy')) {
-      return 'Printout';
-    } else if (title.contains('netflix') || title.contains('prime') || title.contains('spotify') || title.contains('youtube') || title.contains('hotstar') || title.contains('subscription')) {
-      return 'Subscription';
+    } else if (title.contains('movie') || title.contains('cinema') || title.contains('theatre') || title.contains('film') || title.contains('show') || title.contains('pvr') || title.contains('inox')) {
+      return 'Movie & Entertainment';
+    } else if (title.contains('bill') || title.contains('electricity') || title.contains('rent') || title.contains('wifi') || title.contains('water') || title.contains('gas') || title.contains('recharge') || title.contains('maintenance') || title.contains('flat') || title.contains('hostel') || title.contains('maid') || title.contains('cook') || title.contains('broadband')) {
+      return 'Utilities & Bills';
+    } else if (title.contains('uber') || title.contains('ola') || title.contains('auto') || title.contains('cab') || title.contains('train') || title.contains('metro') || title.contains('bus') || title.contains('travel') || title.contains('petrol') || title.contains('fuel') || title.contains('diesel') || title.contains('flight') || title.contains('rickshaw') || title.contains('toll') || title.contains('parking') || title.contains('trip') || title.contains('fare')) {
+      return 'Travel & Commute';
+    } else if (title.contains('print') || title.contains('xerox') || title.contains('stationery') || title.contains('note') || title.contains('assignment') || title.contains('copy') || title.contains('book') || title.contains('pen') || title.contains('paper') || title.contains('project') || title.contains('binding')) {
+      return 'Printouts & Stationery';
+    } else if (title.contains('netflix') || title.contains('prime') || title.contains('spotify') || title.contains('youtube') || title.contains('hotstar') || title.contains('subscription') || title.contains('apple') || title.contains('gym') || title.contains('course') || title.contains('udemy') || title.contains('coursera')) {
+      return 'Subscriptions';
     }
 
-    return 'Others';
+    return 'General / Others';
   }
 
   @override
@@ -121,13 +122,13 @@ class AnalyticsScreen extends StatelessWidget {
           double groupTotal = 0;
           Map<String, double> monthlyData = {};
           Map<String, double> categoryData = {
-            'Movie': 0,
             'Food & Dining': 0,
-            'Utilities': 0,
-            'Travel': 0,
-            'Printout': 0,
-            'Subscription': 0,
-            'Others': 0,
+            'Movie & Entertainment': 0,
+            'Utilities & Bills': 0,
+            'Travel & Commute': 0,
+            'Printouts & Stationery': 0,
+            'Subscriptions': 0,
+            'General / Others': 0,
           };
 
           for (var doc in docs) {
@@ -188,6 +189,10 @@ class AnalyticsScreen extends StatelessWidget {
                 const Text('Detailed Category Breakdown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 12),
                 _buildCategoryBreakdown(categoryData, groupTotal, activeCategoryColors),
+                const SizedBox(height: 28),
+                const Text('All Expenses by Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 12),
+                _buildCategorizedExpenseList(docs, activeCategoryColors),
               ],
             ),
           );
@@ -378,6 +383,74 @@ class AnalyticsScreen extends StatelessWidget {
             );
           }).toList(),
         ),
+      ),
+    );
+  }
+
+  // List of all individual expenses with their resolved category badges
+  Widget _buildCategorizedExpenseList(List<QueryDocumentSnapshot> docs, Map<String, Color> categoryColors) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: docs.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final doc = docs[index];
+          final data = doc.data() as Map<String, dynamic>;
+          final title = (data['title'] ?? 'Untitled Expense').toString();
+          final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+          final category = _resolveCategory(data);
+          final color = categoryColors[category] ?? Colors.blueGrey;
+
+          IconData icon;
+          if (category.contains('Food')) {
+            icon = Icons.restaurant;
+          } else if (category.contains('Movie')) {
+            icon = Icons.movie;
+          } else if (category.contains('Utilities')) {
+            icon = Icons.bolt;
+          } else if (category.contains('Travel')) {
+            icon = Icons.directions_car;
+          } else if (category.contains('Printouts')) {
+            icon = Icons.print;
+          } else if (category.contains('Subscriptions')) {
+            icon = Icons.subscriptions;
+          } else {
+            icon = Icons.receipt_long;
+          }
+
+          return ListTile(
+            dense: true,
+            leading: CircleAvatar(
+              radius: 16,
+              backgroundColor: color.withValues(alpha: 0.15),
+              child: Icon(icon, size: 16, color: color),
+            ),
+            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            subtitle: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  category,
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+                ),
+              ),
+            ),
+            trailing: Text(
+              '\$${amount.toStringAsFixed(2)}',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.teal),
+            ),
+          );
+        },
       ),
     );
   }
