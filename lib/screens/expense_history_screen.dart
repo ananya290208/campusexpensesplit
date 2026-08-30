@@ -1,6 +1,6 @@
-  import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class ExpenseHistoryScreen extends StatefulWidget {
@@ -13,31 +13,60 @@ class ExpenseHistoryScreen extends StatefulWidget {
 class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Expense History'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
-            .collection('expenses')
-            .orderBy('createdAt', descending: true)
+            .collection('groups')
+            .where('members', arrayContains: uid)
             .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+        builder: (context, groupSnapshot) {
+          if (groupSnapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (snapshot.hasError) {
-            return Center(child: Text('Error loading history: ${snapshot.error}'));
-          }
+          final userGroupDocs = groupSnapshot.data?.docs ?? [];
+          final Set<String> userGroupIds = userGroupDocs.map((d) => d.id).toSet();
+          userGroupIds.add('personal');
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text('No expense history found. Add an expense to get started!'),
-            );
-          }
+          return StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('expenses')
+                .orderBy('createdAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-          final docs = snapshot.data!.docs;
+              if (snapshot.hasError) {
+                return Center(child: Text('Error loading history: ${snapshot.error}'));
+              }
+
+              final allDocs = snapshot.data?.docs ?? [];
+              final docs = allDocs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final groupId = (data['groupId'] ?? 'personal').toString();
+                final paidBy = (data['paidBy'] ?? '').toString();
+                final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
+                final shares = data['shares'] as Map<String, dynamic>?;
+
+                final bool isGroupMember = userGroupIds.contains(groupId);
+                final bool isPayer = paidBy == uid || (paidContributions != null && paidContributions.containsKey(uid));
+                final bool isSplitParticipant = shares != null && shares.containsKey(uid);
+
+                return isGroupMember || isPayer || isSplitParticipant;
+              }).toList();
+
+              if (docs.isEmpty) {
+                return const Center(
+                  child: Text('No expense history found for your groups. Add an expense to get started!'),
+                );
+              }
 
           return ListView.builder(
             padding: const EdgeInsets.all(12.0),
@@ -193,6 +222,8 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                   ),
                 ),
               );
+            },
+          );
             },
           );
         },

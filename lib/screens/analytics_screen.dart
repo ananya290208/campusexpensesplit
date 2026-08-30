@@ -99,60 +99,95 @@ class AnalyticsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+    final uid = user?.uid;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Expense Analytics & Insights')),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-          final docs = snapshot.data!.docs;
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text(
-                'No expenses found yet.\nAdd expenses to view visual analytics!',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            );
+        stream: FirebaseFirestore.instance
+            .collection('groups')
+            .where('members', arrayContains: uid)
+            .snapshots(),
+        builder: (context, groupSnapshot) {
+          if (groupSnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          double myTotal = 0;
-          double groupTotal = 0;
-          Map<String, double> monthlyData = {};
-          Map<String, double> categoryData = {
-            'Food & Dining': 0,
-            'Movie & Entertainment': 0,
-            'Utilities & Bills': 0,
-            'Travel & Commute': 0,
-            'Printouts & Stationery': 0,
-            'Subscriptions': 0,
-            'General / Others': 0,
-          };
+          final userGroupDocs = groupSnapshot.data?.docs ?? [];
+          final Set<String> userGroupIds = userGroupDocs.map((d) => d.id).toSet();
+          userGroupIds.add('personal');
 
-          for (var doc in docs) {
-            final data = doc.data() as Map<String, dynamic>;
-            final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
-            final createdAt = data['createdAt'];
+          return StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            groupTotal += amt;
-            if (data['paidBy'] == user?.uid) {
-              myTotal += amt;
-            }
+              final allDocs = snapshot.data?.docs ?? [];
+              final docs = allDocs.where((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final groupId = (data['groupId'] ?? 'personal').toString();
+                final paidBy = (data['paidBy'] ?? '').toString();
+                final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
+                final shares = data['shares'] as Map<String, dynamic>?;
 
-            // Monthly breakdown calculation based on timestamp
-            String monthKey = 'Recent';
-            if (createdAt is Timestamp) {
-              DateTime date = createdAt.toDate();
-              monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
-            }
-            monthlyData[monthKey] = (monthlyData[monthKey] ?? 0.0) + amt;
+                final bool isGroupMember = userGroupIds.contains(groupId);
+                final bool isPayer = paidBy == uid || (paidContributions != null && paidContributions.containsKey(uid));
+                final bool isSplitParticipant = shares != null && shares.containsKey(uid);
 
-            // Resolve proper category
-            final category = _resolveCategory(data);
-            categoryData[category] = (categoryData[category] ?? 0.0) + amt;
-          }
+                return isGroupMember || isPayer || isSplitParticipant;
+              }).toList();
+
+              if (docs.isEmpty) {
+                return const Center(
+                  child: Text(
+                    'No expenses found for your groups yet.\nAdd an expense to view visual analytics!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                );
+              }
+
+              double myTotal = 0;
+              double groupTotal = 0;
+              Map<String, double> monthlyData = {};
+              Map<String, double> categoryData = {
+                'Food & Dining': 0,
+                'Movie & Entertainment': 0,
+                'Utilities & Bills': 0,
+                'Travel & Commute': 0,
+                'Printouts & Stationery': 0,
+                'Subscriptions': 0,
+                'General / Others': 0,
+              };
+
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
+                final paidBy = (data['paidBy'] ?? '').toString();
+                final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
+                final createdAt = data['createdAt'];
+
+                groupTotal += amt;
+                if (paidContributions != null && paidContributions.containsKey(uid)) {
+                  myTotal += ((paidContributions[uid] as num?)?.toDouble() ?? 0.0);
+                } else if (paidBy == uid) {
+                  myTotal += amt;
+                }
+
+                // Monthly breakdown calculation based on timestamp
+                String monthKey = 'Recent';
+                if (createdAt is Timestamp) {
+                  DateTime date = createdAt.toDate();
+                  monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
+                }
+                monthlyData[monthKey] = (monthlyData[monthKey] ?? 0.0) + amt;
+
+                // Resolve proper category
+                final category = _resolveCategory(data);
+                categoryData[category] = (categoryData[category] ?? 0.0) + amt;
+              }
 
           // Build dynamic color mapping for active categories
           Map<String, Color> activeCategoryColors = {};
@@ -195,6 +230,8 @@ class AnalyticsScreen extends StatelessWidget {
                 _buildCategorizedExpenseList(docs, activeCategoryColors),
               ],
             ),
+          );
+            },
           );
         },
       ),
