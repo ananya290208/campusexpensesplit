@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import '../widgets/user_badge.dart';
 
 class ExpenseHistoryScreen extends StatefulWidget {
   const ExpenseHistoryScreen({super.key});
@@ -18,6 +19,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Expense History'),
+        actions: const [UserBadge()],
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance

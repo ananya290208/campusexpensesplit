@@ -31,35 +31,42 @@ class ExpenseProvider extends ChangeNotifier {
   bool get isDarkMode => _isDarkMode;
   bool get isInitialized => _isInitialized;
 
-  ExpenseProvider() {
+  ExpenseProvider({bool initialDarkMode = false, Box? settingsBox}) : _isDarkMode = initialDarkMode {
+    if (settingsBox != null) {
+      _settingsBox = settingsBox;
+    }
     _initHive();
   }
 
   Future<void> _initHive() async {
-  try {
-    await Hive.initFlutter();
-    
-    _participantsBox = await Hive.openBox('participants_box');
-    _expensesBox = await Hive.openBox('expenses_box');
-    _settingsBox = await Hive.openBox('settings_box');
+    try {
+      await Hive.initFlutter();
+      
+      _participantsBox = await Hive.openBox('participants_box');
+      _expensesBox = await Hive.openBox('expenses_box');
+      if (!Hive.isBoxOpen('settings_box')) {
+        _settingsBox = await Hive.openBox('settings_box');
+      } else {
+        _settingsBox = Hive.box('settings_box');
+      }
 
-    _isDarkMode = _settingsBox.get('isDarkMode', defaultValue: false);
+      _isDarkMode = _settingsBox.get('isDarkMode', defaultValue: _isDarkMode);
 
-    // Listen to Firebase Auth state changes
-    _currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    FirebaseAuth.instance.authStateChanges().listen((user) {
-      _currentUserId = user?.uid;
+      // Listen to Firebase Auth state changes
+      _currentUserId = FirebaseAuth.instance.currentUser?.uid;
+      FirebaseAuth.instance.authStateChanges().listen((user) {
+        _currentUserId = user?.uid;
+        notifyListeners();
+      });
+
+      _loadData();
+    } catch (e) {
+      debugPrint("Initialization error: $e");
+    } finally {
+      _isInitialized = true;
       notifyListeners();
-    });
-
-    _loadData();
-  } catch (e) {
-    debugPrint("Initialization error: $e");
-  } finally {
-    _isInitialized = true;
-    notifyListeners();
+    }
   }
-}
 
   void toggleTheme() async {
     _isDarkMode = !_isDarkMode;

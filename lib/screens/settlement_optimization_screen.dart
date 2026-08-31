@@ -2,6 +2,7 @@ import 'package:campusexpensesplit/services/debt_simplification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/user_badge.dart';
 
 class SettlementOptimizationScreen extends StatefulWidget {
   const SettlementOptimizationScreen({super.key});
@@ -51,17 +52,17 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
     required String groupId,
     required String groupName,
   }) async {
-    final paymentKey = '$from pays $to in $groupId';
+    final paymentKey = '$from pays $to';
     setState(() {
       _isLoading = true;
       _processingPaymentFor = paymentKey;
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 1));
 
     try {
       await FirebaseFirestore.instance.collection('expenses').add({
-        'title': 'Settlement Payment',
+        'title': 'Settlement: $groupName',
         'amount': amount,
         'category': 'General / Others',
         'paidBy': from,
@@ -80,7 +81,8 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
       _processingPaymentFor = null;
     });
 
-    final toDisplayName = await _resolveUserName(to);
+    final otherUid = from == FirebaseAuth.instance.currentUser?.uid ? to : from;
+    final otherDisplayName = await _resolveUserName(otherUid);
 
     if (!mounted) return;
 
@@ -92,11 +94,11 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 28),
             SizedBox(width: 8),
-            Text('Payment Sent!'),
+            Text('Settlement Recorded!'),
           ],
         ),
         content: Text(
-          'Successfully transferred \$${amount.toStringAsFixed(2)} to $toDisplayName for "$groupName". Balances have been updated.',
+          'Successfully settled \$${amount.toStringAsFixed(2)} with $otherDisplayName. Net obligations across all groups have been updated.',
         ),
         actions: [
           TextButton(
@@ -158,79 +160,106 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
 
               final allExpenses = expenseSnapshot.data?.docs ?? [];
 
-              // Group expenses by their groupId
-              final Map<String, List<Map<String, dynamic>>> expensesByGroup = {};
+              // 1. Calculate net balances for each user across all joined groups
+              final Map<String, double> globalNetBalances = {};
+              final Map<String, Set<String>> userInvolvedGroups = {};
+
               for (var expDoc in allExpenses) {
                 final data = expDoc.data() as Map<String, dynamic>;
                 final gId = (data['groupId'] ?? 'personal').toString();
 
-                if (joinedGroupIds.contains(gId)) {
-                  expensesByGroup.putIfAbsent(gId, () => []).add(data);
+                if (!joinedGroupIds.contains(gId)) continue;
+
+                final gName = groupNames[gId] ?? 'Group';
+                final totalAmount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+                final paidBy = (data['paidBy'] ?? '').toString();
+                final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
+                final shares = data['shares'] as Map<String, dynamic>?;
+
+                // Credit who paid
+                if (paidContributions != null && paidContributions.isNotEmpty) {
+                  paidContributions.forEach((uid, val) {
+                    final p = (val as num?)?.toDouble() ?? 0.0;
+                    globalNetBalances[uid] = (globalNetBalances[uid] ?? 0.0) + p;
+                    userInvolvedGroups.putIfAbsent(uid, () => {}).add(gName);
+                  });
+                } else if (paidBy.isNotEmpty) {
+                  globalNetBalances[paidBy] = (globalNetBalances[paidBy] ?? 0.0) + totalAmount;
+                  userInvolvedGroups.putIfAbsent(paidBy, () => {}).add(gName);
+                }
+
+                // Debit who owes
+                if (shares != null && shares.isNotEmpty) {
+                  shares.forEach((uid, val) {
+                    final s = (val as num?)?.toDouble() ?? 0.0;
+                    globalNetBalances[uid] = (globalNetBalances[uid] ?? 0.0) - s;
+                    userInvolvedGroups.putIfAbsent(uid, () => {}).add(gName);
+                  });
                 }
               }
 
-              // Calculate optimized transactions per group
-              List<Map<String, dynamic>> paymentsToMake = [];
-              List<Map<String, dynamic>> paymentsToReceive = [];
+              // 2. Run global shortest-path debt simplification
+              final List<Map<String, dynamic>> globalTransactions = 
+                  DebtSimplificationService.calculateOptimizedDebts(globalNetBalances);
 
-              expensesByGroup.forEach((gId, gExpenses) {
-                final gName = groupNames[gId] ?? 'Group';
-                final Map<String, double> netBalances = {};
+              // 3. Aggregate transactions involving the current user into per-peer obligations
+              final Map<String, double> owedByMeToPeer = {}; // peerUid -> totalAmount I owe them
+              final Map<String, double> owedToMeByPeer = {}; // peerUid -> totalAmount they owe me
 
-                for (var data in gExpenses) {
-                  final totalAmount = (data['amount'] as num?)?.toDouble() ?? 0.0;
-                  final paidBy = (data['paidBy'] ?? '').toString();
-                  final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
-                  final shares = data['shares'] as Map<String, dynamic>?;
+              for (var tx in globalTransactions) {
+                final fromUid = tx['from'] as String;
+                final toUid = tx['to'] as String;
+                final amount = (tx['amount'] as num).toDouble();
 
-                  // 1. Credit who paid
-                  if (paidContributions != null && paidContributions.isNotEmpty) {
-                    paidContributions.forEach((uid, val) {
-                      final p = (val as num?)?.toDouble() ?? 0.0;
-                      netBalances[uid] = (netBalances[uid] ?? 0.0) + p;
-                    });
-                  } else if (paidBy.isNotEmpty) {
-                    netBalances[paidBy] = (netBalances[paidBy] ?? 0.0) + totalAmount;
-                  }
+                if (amount < 0.01) continue;
 
-                  // 2. Debit who owes based on shares
-                  if (shares != null && shares.isNotEmpty) {
-                    shares.forEach((uid, val) {
-                      final s = (val as num?)?.toDouble() ?? 0.0;
-                      netBalances[uid] = (netBalances[uid] ?? 0.0) - s;
-                    });
-                  }
+                if (fromUid == currentUserId) {
+                  owedByMeToPeer[toUid] = (owedByMeToPeer[toUid] ?? 0.0) + amount;
+                } else if (toUid == currentUserId) {
+                  owedToMeByPeer[fromUid] = (owedToMeByPeer[fromUid] ?? 0.0) + amount;
                 }
+              }
 
-                // Run debt simplification for this group
-                final simplified = DebtSimplificationService.calculateOptimizedDebts(netBalances);
+              // 4. Net out obligations per user across all groups into a single combined debt
+              final Set<String> allPeers = {...owedByMeToPeer.keys, ...owedToMeByPeer.keys};
+              final List<Map<String, dynamic>> paymentsToMake = [];
+              final List<Map<String, dynamic>> paymentsToReceive = [];
 
-                for (var tx in simplified) {
-                  final fromUid = tx['from'] as String;
-                  final toUid = tx['to'] as String;
-                  final amount = (tx['amount'] as num).toDouble();
+              for (var peerUid in allPeers) {
+                final iOwe = owedByMeToPeer[peerUid] ?? 0.0;
+                final theyOwe = owedToMeByPeer[peerUid] ?? 0.0;
+                final netObligation = theyOwe - iOwe;
 
-                  if (amount < 0.01) continue;
+                // Shared groups between current user and this peer
+                final Set<String> sharedGroups = (userInvolvedGroups[peerUid] ?? {})
+                    .intersection(userInvolvedGroups[currentUserId] ?? {});
 
-                  if (fromUid == currentUserId) {
-                    paymentsToMake.add({
-                      'from': fromUid,
-                      'to': toUid,
-                      'amount': amount,
-                      'groupId': gId,
-                      'groupName': gName,
-                    });
-                  } else if (toUid == currentUserId) {
-                    paymentsToReceive.add({
-                      'from': fromUid,
-                      'to': toUid,
-                      'amount': amount,
-                      'groupId': gId,
-                      'groupName': gName,
-                    });
-                  }
+                final String groupsSummary = sharedGroups.isEmpty
+                    ? (userInvolvedGroups[peerUid]?.join(', ') ?? 'Shared Expenses')
+                    : (sharedGroups.length == 1 
+                        ? 'Group: ${sharedGroups.first}' 
+                        : 'Across: ${sharedGroups.join(', ')}');
+
+                if (netObligation < -0.01) {
+                  // Current user owes peer
+                  paymentsToMake.add({
+                    'from': currentUserId,
+                    'to': peerUid,
+                    'amount': -netObligation,
+                    'groupId': 'personal',
+                    'groupName': groupsSummary,
+                  });
+                } else if (netObligation > 0.01) {
+                  // Peer owes current user
+                  paymentsToReceive.add({
+                    'from': peerUid,
+                    'to': currentUserId,
+                    'amount': netObligation,
+                    'groupId': 'personal',
+                    'groupName': groupsSummary,
+                  });
                 }
-              });
+              }
 
               final double totalDueToPay = paymentsToMake.fold(0.0, (acc, item) => acc + (item['amount'] as double));
               final double totalDueToReceive = paymentsToReceive.fold(0.0, (acc, item) => acc + (item['amount'] as double));
@@ -263,11 +292,14 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                 );
               }
 
+              final isDark = Theme.of(context).brightness == Brightness.dark;
+
               return DefaultTabController(
                 length: 2,
                 child: Scaffold(
                   appBar: AppBar(
                     title: const Text('Settlement Optimization'),
+                    actions: const [UserBadge()],
                     bottom: TabBar(
                       tabs: [
                         Tab(
@@ -288,12 +320,16 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                         padding: const EdgeInsets.all(16.0),
                         children: [
                           Card(
-                            color: totalDueToPay > 0 ? Colors.red.shade50 : Colors.green.shade50,
+                            color: totalDueToPay > 0 
+                                ? (isDark ? Colors.red.shade900.withValues(alpha: 0.25) : Colors.red.shade50)
+                                : (isDark ? Colors.green.shade900.withValues(alpha: 0.25) : Colors.green.shade50),
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                               side: BorderSide(
-                                color: totalDueToPay > 0 ? Colors.red.shade200 : Colors.green.shade200,
+                                color: totalDueToPay > 0 
+                                    ? (isDark ? Colors.red.shade700 : Colors.red.shade200) 
+                                    : (isDark ? Colors.green.shade700 : Colors.green.shade200),
                               ),
                             ),
                             child: Padding(
@@ -302,7 +338,9 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                 children: [
                                   Icon(
                                     totalDueToPay > 0 ? Icons.payment : Icons.check_circle,
-                                    color: totalDueToPay > 0 ? Colors.red.shade800 : Colors.green.shade800,
+                                    color: totalDueToPay > 0 
+                                        ? (isDark ? Colors.redAccent.shade100 : Colors.red.shade800) 
+                                        : (isDark ? Colors.greenAccent.shade100 : Colors.green.shade800),
                                     size: 32,
                                   ),
                                   const SizedBox(width: 12),
@@ -316,7 +354,9 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                               : 'You Don\'t Owe Anything!',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: totalDueToPay > 0 ? Colors.red.shade900 : Colors.green.shade900,
+                                            color: totalDueToPay > 0 
+                                                ? (isDark ? Colors.redAccent.shade100 : Colors.red.shade900) 
+                                                : (isDark ? Colors.greenAccent.shade100 : Colors.green.shade900),
                                           ),
                                         ),
                                         const SizedBox(height: 2),
@@ -325,7 +365,9 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                           style: TextStyle(
                                             fontSize: 22,
                                             fontWeight: FontWeight.bold,
-                                            color: totalDueToPay > 0 ? Colors.red.shade800 : Colors.green.shade800,
+                                            color: totalDueToPay > 0 
+                                                ? (isDark ? Colors.redAccent : Colors.red.shade800) 
+                                                : (isDark ? Colors.greenAccent : Colors.green.shade800),
                                           ),
                                         ),
                                       ],
@@ -376,7 +418,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                               final amount = tx['amount'] as double;
                               final groupId = tx['groupId'] as String;
                               final groupName = tx['groupName'] as String;
-                              final paymentKey = '$currentUserId pays $toUid in $groupId';
+                              final paymentKey = '$currentUserId pays $toUid';
                               final isProcessing = _isLoading && _processingPaymentFor == paymentKey;
 
                               return FutureBuilder<String>(
@@ -465,17 +507,17 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                         padding: const EdgeInsets.all(16.0),
                         children: [
                           Card(
-                            color: Colors.green.shade50,
+                            color: isDark ? Colors.green.shade900.withValues(alpha: 0.25) : Colors.green.shade50,
                             elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: Colors.green.shade200),
+                              side: BorderSide(color: isDark ? Colors.green.shade700 : Colors.green.shade200),
                             ),
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Row(
                                 children: [
-                                  Icon(Icons.savings, color: Colors.green.shade800, size: 32),
+                                  Icon(Icons.savings, color: isDark ? Colors.greenAccent.shade100 : Colors.green.shade800, size: 32),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
@@ -485,7 +527,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                           'Total Owed to You',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.green.shade900,
+                                            color: isDark ? Colors.greenAccent.shade100 : Colors.green.shade900,
                                           ),
                                         ),
                                         const SizedBox(height: 2),
@@ -494,7 +536,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                           style: TextStyle(
                                             fontSize: 22,
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.green.shade800,
+                                            color: isDark ? Colors.greenAccent : Colors.green.shade800,
                                           ),
                                         ),
                                       ],
@@ -535,7 +577,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                               final amount = tx['amount'] as double;
                               final groupId = tx['groupId'] as String;
                               final groupName = tx['groupName'] as String;
-                              final paymentKey = '$fromUid pays $currentUserId in $groupId';
+                              final paymentKey = '$fromUid pays $currentUserId';
                               final isProcessing = _isLoading && _processingPaymentFor == paymentKey;
 
                               return FutureBuilder<String>(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:math' as math;
+import '../widgets/user_badge.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -102,7 +103,10 @@ class AnalyticsScreen extends StatelessWidget {
     final uid = user?.uid;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Expense Analytics & Insights')),
+      appBar: AppBar(
+        title: const Text('Expense Analytics & Insights'),
+        actions: const [UserBadge()],
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('groups')

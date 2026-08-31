@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
+import '../widgets/user_badge.dart';
 
 class ExpenseSummaryScreen extends StatelessWidget {
   const ExpenseSummaryScreen({super.key});
@@ -15,6 +16,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Expense Summary'),
+          actions: const [UserBadge()],
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.person), text: 'My Summary'),
@@ -103,21 +105,16 @@ class ExpenseSummaryScreen extends StatelessWidget {
                 myRelevantExpenses.add(data);
               }
 
-              // 3. Compute net owed amounts
-              if (shares != null && shares.isNotEmpty) {
-                if (myPaid > 0) {
-                  // I paid, others owe me their portion
-                  shares.forEach((memberId, shareAmount) {
-                    if (memberId != uid) {
-                      totalOwedToMe += (shareAmount as num).toDouble();
-                    }
-                  });
-                } else if (myShare > 0 && paidBy != uid) {
-                  // Someone else paid and I was included in the split, I owe my share
-                  totalIOwe += myShare;
-                }
+              // 3. Compute net owed amounts based on actual contributions vs fair share
+              final double net = myPaid - myShare;
+              if (net > 0.001) {
+                totalOwedToMe += net;
+              } else if (net < -0.001) {
+                totalIOwe += (-net);
               }
             }
+
+            final isDark = Theme.of(context).brightness == Brightness.dark;
 
             return Padding(
               padding: const EdgeInsets.all(16.0),
@@ -126,12 +123,12 @@ class ExpenseSummaryScreen extends StatelessWidget {
                 children: [
                   // 1. Total Personal Expenditure Card
                   Card(
-                    color: Colors.deepPurple.shade50,
+                    color: isDark ? Colors.deepPurple.shade900.withValues(alpha: 0.3) : Colors.deepPurple.shade50,
                     child: ListTile(
                       title: const Text('Total Personal Expenditure'),
                       subtitle: Text('\$${totalSpentByMe.toStringAsFixed(2)}', 
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                      leading: const Icon(Icons.account_balance, color: Colors.deepPurple, size: 36),
+                      leading: Icon(Icons.account_balance, color: isDark ? Colors.deepPurple.shade200 : Colors.deepPurple, size: 36),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -141,16 +138,16 @@ class ExpenseSummaryScreen extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Card(
-                          color: Colors.red.shade50,
+                          color: isDark ? Colors.red.shade900.withValues(alpha: 0.25) : Colors.red.shade50,
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('You Owe', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                Text('You Owe', style: TextStyle(color: isDark ? Colors.redAccent.shade100 : Colors.red, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
                                 Text('\$${totalIOwe.toStringAsFixed(2)}', 
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red.shade800)),
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.redAccent : Colors.red.shade800)),
                               ],
                             ),
                           ),
@@ -159,16 +156,16 @@ class ExpenseSummaryScreen extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Card(
-                          color: Colors.green.shade50,
+                          color: isDark ? Colors.green.shade900.withValues(alpha: 0.25) : Colors.green.shade50,
                           child: Padding(
                             padding: const EdgeInsets.all(12.0),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Owed to You', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                Text('Owed to You', style: TextStyle(color: isDark ? Colors.greenAccent.shade100 : Colors.green, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
                                 Text('\$${totalOwedToMe.toStringAsFixed(2)}', 
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green.shade800)),
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.greenAccent : Colors.green.shade800)),
                               ],
                             ),
                           ),

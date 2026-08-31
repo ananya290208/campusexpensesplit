@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 class RealtimeSettlementView extends StatelessWidget {
   final String groupId;
 
-  const RealtimeSettlementView({Key? key, required this.groupId}) : super(key: key);
+  const RealtimeSettlementView({super.key, required this.groupId});
 
   @override
   Widget build(BuildContext context) {
