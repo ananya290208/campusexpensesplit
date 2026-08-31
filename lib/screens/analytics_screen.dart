@@ -131,30 +131,32 @@ class AnalyticsScreen extends StatelessWidget {
               final allDocs = snapshot.data?.docs ?? [];
               final docs = allDocs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                final groupId = (data['groupId'] ?? 'personal').toString();
                 final paidBy = (data['paidBy'] ?? '').toString();
                 final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
                 final shares = data['shares'] as Map<String, dynamic>?;
 
-                final bool isGroupMember = userGroupIds.contains(groupId);
                 final bool isPayer = paidBy == uid || (paidContributions != null && paidContributions.containsKey(uid));
                 final bool isSplitParticipant = shares != null && shares.containsKey(uid);
 
-                return isGroupMember || isPayer || isSplitParticipant;
+                // Strictly show expenses related to the logged in user
+                return isPayer || isSplitParticipant;
               }).toList();
 
               if (docs.isEmpty) {
                 return const Center(
-                  child: Text(
-                    'No expenses found for your groups yet.\nAdd an expense to view visual analytics!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Text(
+                      'No expenses found for your account yet.\nAdd an expense where you are involved to view visual analytics!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
                   ),
                 );
               }
 
-              double myTotal = 0;
-              double groupTotal = 0;
+              double totalMySpend = 0;
+              double totalPaidByMe = 0;
               Map<String, double> monthlyData = {};
               Map<String, double> categoryData = {
                 'Food & Dining': 0,
@@ -171,26 +173,41 @@ class AnalyticsScreen extends StatelessWidget {
                 final amt = (data['amount'] as num?)?.toDouble() ?? 0.0;
                 final paidBy = (data['paidBy'] ?? '').toString();
                 final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
+                final shares = data['shares'] as Map<String, dynamic>?;
                 final createdAt = data['createdAt'];
 
-                groupTotal += amt;
+                // User's contribution towards paying the bill
+                double myPaid = 0.0;
                 if (paidContributions != null && paidContributions.containsKey(uid)) {
-                  myTotal += ((paidContributions[uid] as num?)?.toDouble() ?? 0.0);
+                  myPaid = ((paidContributions[uid] as num?)?.toDouble() ?? 0.0);
                 } else if (paidBy == uid) {
-                  myTotal += amt;
+                  myPaid = amt;
                 }
 
-                // Monthly breakdown calculation based on timestamp
+                // User's fair share / expenditure
+                double myShare = 0.0;
+                if (shares != null && shares.containsKey(uid)) {
+                  myShare = ((shares[uid] as num?)?.toDouble() ?? 0.0);
+                } else if (paidBy == uid && (shares == null || shares.isEmpty)) {
+                  myShare = amt;
+                } else {
+                  myShare = myPaid;
+                }
+
+                totalPaidByMe += myPaid;
+                totalMySpend += myShare;
+
+                // Monthly breakdown calculation based on timestamp for user's share
                 String monthKey = 'Recent';
                 if (createdAt is Timestamp) {
                   DateTime date = createdAt.toDate();
                   monthKey = '${date.year}-${date.month.toString().padLeft(2, '0')}';
                 }
-                monthlyData[monthKey] = (monthlyData[monthKey] ?? 0.0) + amt;
+                monthlyData[monthKey] = (monthlyData[monthKey] ?? 0.0) + myShare;
 
-                // Resolve proper category
+                // Resolve proper category and attribute user's share
                 final category = _resolveCategory(data);
-                categoryData[category] = (categoryData[category] ?? 0.0) + amt;
+                categoryData[category] = (categoryData[category] ?? 0.0) + myShare;
               }
 
           // Build dynamic color mapping for active categories
@@ -207,31 +224,31 @@ class AnalyticsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Overall Comparison', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text('Your Spending Overview', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: _buildAnalyticsCard('Your Contribution', myTotal, Colors.deepPurple)),
+                    Expanded(child: _buildAnalyticsCard('Your Total Spend', totalMySpend, Colors.deepPurple)),
                     const SizedBox(width: 12),
-                    Expanded(child: _buildAnalyticsCard('Total Spending', groupTotal, Colors.teal)),
+                    Expanded(child: _buildAnalyticsCard('Total Paid by You', totalPaidByMe, Colors.teal)),
                   ],
                 ),
                 const SizedBox(height: 28),
-                const Text('Monthly Insights', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text('Monthly Spending Trends', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 12),
                 _buildCustomBarChart(monthlyData, Colors.indigo),
                 const SizedBox(height: 28),
                 const Text('Expense Category Distribution', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 12),
-                _buildPieChartCard(categoryData, groupTotal, activeCategoryColors),
+                _buildPieChartCard(categoryData, totalMySpend, activeCategoryColors),
                 const SizedBox(height: 28),
                 const Text('Detailed Category Breakdown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 12),
-                _buildCategoryBreakdown(categoryData, groupTotal, activeCategoryColors),
+                _buildCategoryBreakdown(categoryData, totalMySpend, activeCategoryColors),
                 const SizedBox(height: 28),
-                const Text('All Expenses by Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text('Your Expenses by Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 const SizedBox(height: 12),
-                _buildCategorizedExpenseList(docs, activeCategoryColors),
+                _buildCategorizedExpenseList(docs, activeCategoryColors, uid),
               ],
             ),
           );
@@ -253,7 +270,7 @@ class AnalyticsScreen extends StatelessWidget {
           children: [
             Text(label, style: const TextStyle(fontSize: 13, color: Colors.grey)),
             const SizedBox(height: 8),
-            Text('\$${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+            Text('₹${amount.toStringAsFixed(2)}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
           ],
         ),
       ),
@@ -285,7 +302,7 @@ class AnalyticsScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      Text('\$${entry.value.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                      Text('₹${entry.value.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, color: Colors.grey)),
                     ],
                   ),
                   const SizedBox(height: 6),
@@ -405,7 +422,7 @@ class AnalyticsScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(entry.key, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                      Text('${(percentage * 100).toStringAsFixed(1)}% (\$${catVal.toStringAsFixed(2)})', 
+                      Text('${(percentage * 100).toStringAsFixed(1)}% (₹${catVal.toStringAsFixed(2)})', 
                         style: const TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
@@ -429,7 +446,7 @@ class AnalyticsScreen extends StatelessWidget {
   }
 
   // List of all individual expenses with their resolved category badges
-  Widget _buildCategorizedExpenseList(List<QueryDocumentSnapshot> docs, Map<String, Color> categoryColors) {
+  Widget _buildCategorizedExpenseList(List<QueryDocumentSnapshot> docs, Map<String, Color> categoryColors, String? uid) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -443,6 +460,19 @@ class AnalyticsScreen extends StatelessWidget {
           final data = doc.data() as Map<String, dynamic>;
           final title = (data['title'] ?? 'Untitled Expense').toString();
           final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+          final shares = data['shares'] as Map<String, dynamic>?;
+          final paidBy = (data['paidBy'] ?? '').toString();
+          final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
+
+          double userShare = 0.0;
+          if (shares != null && shares.containsKey(uid)) {
+            userShare = ((shares[uid] as num?)?.toDouble() ?? 0.0);
+          } else if (paidContributions != null && paidContributions.containsKey(uid)) {
+            userShare = ((paidContributions[uid] as num?)?.toDouble() ?? 0.0);
+          } else if (paidBy == uid) {
+            userShare = amount;
+          }
+
           final category = _resolveCategory(data);
           final color = categoryColors[category] ?? Colors.blueGrey;
 
@@ -487,7 +517,7 @@ class AnalyticsScreen extends StatelessWidget {
               ),
             ),
             trailing: Text(
-              '\$${amount.toStringAsFixed(2)}',
+              '₹${userShare > 0 ? userShare.toStringAsFixed(2) : amount.toStringAsFixed(2)}',
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.teal),
             ),
           );

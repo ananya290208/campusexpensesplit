@@ -47,7 +47,7 @@ class RealtimeSettlementView extends StatelessWidget {
                 ),
                 title: Text('${tx['from']} pays ${tx['to']}'),
                 trailing: Text(
-                  '\$${(tx['amount'] as double).toStringAsFixed(2)}',
+                  '₹${(tx['amount'] as double).toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.green,

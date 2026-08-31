@@ -126,7 +126,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
                     color: isDark ? Colors.deepPurple.shade900.withValues(alpha: 0.3) : Colors.deepPurple.shade50,
                     child: ListTile(
                       title: const Text('Total Personal Expenditure'),
-                      subtitle: Text('\$${totalSpentByMe.toStringAsFixed(2)}', 
+                      subtitle: Text('₹${totalSpentByMe.toStringAsFixed(2)}', 
                           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
                       leading: Icon(Icons.account_balance, color: isDark ? Colors.deepPurple.shade200 : Colors.deepPurple, size: 36),
                     ),
@@ -146,7 +146,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
                               children: [
                                 Text('You Owe', style: TextStyle(color: isDark ? Colors.redAccent.shade100 : Colors.red, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
-                                Text('\$${totalIOwe.toStringAsFixed(2)}', 
+                                Text('₹${totalIOwe.toStringAsFixed(2)}', 
                                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.redAccent : Colors.red.shade800)),
                               ],
                             ),
@@ -164,7 +164,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
                               children: [
                                 Text('Owed to You', style: TextStyle(color: isDark ? Colors.greenAccent.shade100 : Colors.green, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 4),
-                                Text('\$${totalOwedToMe.toStringAsFixed(2)}', 
+                                Text('₹${totalOwedToMe.toStringAsFixed(2)}', 
                                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.greenAccent : Colors.green.shade800)),
                               ],
                             ),
@@ -194,7 +194,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
                               return ListTile(
                                 title: Text(item['title'] ?? 'Expense'),
                                 subtitle: Text(dateStr),
-                                trailing: Text('\$${((item['paidContributions']?[uid] ?? item['amount']) as num).toStringAsFixed(2)}', 
+                                trailing: Text('₹${((item['paidContributions']?[uid] ?? item['amount']) as num).toStringAsFixed(2)}', 
                                     style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
                               );
                             },
@@ -275,7 +275,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
                   child: ExpansionTile(
                     title: Text(groupData['name'] ?? 'Group', style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text('Code: ${groupData['code']} • Members: ${membersList.length}'),
-                    trailing: Text('\$${totalGroupSpend.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    trailing: Text('₹${totalGroupSpend.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     children: [
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
@@ -305,10 +305,10 @@ class ExpenseSummaryScreen extends StatelessWidget {
                             Color statusColor;
 
                             if (netBalance > 0.01) {
-                              statusText = 'Gets back \$${netBalance.toStringAsFixed(2)}';
+                              statusText = 'Gets back ₹${netBalance.toStringAsFixed(2)}';
                               statusColor = Colors.green.shade700;
                             } else if (netBalance < -0.01) {
-                              statusText = 'Owes \$${netBalance.abs().toStringAsFixed(2)}';
+                              statusText = 'Owes ₹${netBalance.abs().toStringAsFixed(2)}';
                               statusColor = Colors.red.shade700;
                             } else {
                               statusText = 'Settled up';
@@ -322,7 +322,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
                                 color: isCurrentUser ? Colors.deepPurple : Colors.grey,
                               ),
                               title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Text('Paid: \$${paid.toStringAsFixed(2)} | Share: \$${owedShare.toStringAsFixed(2)}'),
+                              subtitle: Text('Paid: ₹${paid.toStringAsFixed(2)} | Share: ₹${owedShare.toStringAsFixed(2)}'),
                               trailing: Text(
                                 statusText,
                                 style: TextStyle(
@@ -353,7 +353,7 @@ class ExpenseSummaryScreen extends StatelessWidget {
                             dense: true,
                             title: Text(data['title'] ?? 'Expense'),
                             subtitle: Text(dateStr),
-                            trailing: Text('\$${(data['amount'] as num).toStringAsFixed(2)}'),
+                            trailing: Text('₹${(data['amount'] as num).toStringAsFixed(2)}'),
                           );
                         })
                     ],

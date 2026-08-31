@@ -353,7 +353,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     // Input validation for negative or zero amounts
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Expense amount must be greater than \$0.00.')),
+        const SnackBar(content: Text('Expense amount must be greater than ₹0.00.')),
       );
       return;
     }
@@ -362,11 +362,11 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
     // Validate that total paid contributions equal the total expense amount
     if (_groupMembers.isNotEmpty) {
-      double totalPaidSum = paidContributions.values.fold(0.0, (sum, val) => sum + val);
+      double totalPaidSum = paidContributions.values.fold(0.0, (acc, val) => acc + val);
       // Using a small tolerance (0.01) for floating-point math
       if ((totalPaidSum - amount).abs() > 0.01) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Total paid contributions (\$${totalPaidSum.toStringAsFixed(2)}) must equal the total amount (\$${amount.toStringAsFixed(2)})!')),
+          SnackBar(content: Text('Total paid contributions (₹${totalPaidSum.toStringAsFixed(2)}) must equal the total amount (₹${amount.toStringAsFixed(2)})!')),
         );
         return;
       }
@@ -502,7 +502,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               controller: _amountController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(labelText: 'Amount (\$) ', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Amount (₹) ', border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
 
@@ -544,7 +544,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                           controller: _paidControllers[uid],
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: const InputDecoration(
-                            labelText: 'Paid Amount',
+                            labelText: 'Paid Amount (₹)',
                             isDense: true,
                             border: OutlineInputBorder(),
                           ),
@@ -580,7 +580,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     children: [
                       Expanded(child: Text(member['name']!)),
                       if (_selectedSplitType == SplitType.uniform)
-                        Text('\$${(totalAmount / _groupMembers.length).toStringAsFixed(2)}')
+                        Text('₹${(totalAmount / _groupMembers.length).toStringAsFixed(2)}')
                       else
                         SizedBox(
                           width: 120,
@@ -588,7 +588,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                             controller: _splitControllers[uid],
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             decoration: InputDecoration(
-                              labelText: _selectedSplitType == SplitType.specific ? 'Amount' : 'Ratio Weight',
+                              labelText: _selectedSplitType == SplitType.specific ? 'Amount (₹)' : 'Ratio Weight',
                               isDense: true,
                               border: const OutlineInputBorder(),
                             ),

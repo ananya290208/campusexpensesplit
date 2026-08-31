@@ -52,21 +52,27 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
               final allDocs = snapshot.data?.docs ?? [];
               final docs = allDocs.where((doc) {
                 final data = doc.data() as Map<String, dynamic>;
-                final groupId = (data['groupId'] ?? 'personal').toString();
                 final paidBy = (data['paidBy'] ?? '').toString();
                 final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
                 final shares = data['shares'] as Map<String, dynamic>?;
 
-                final bool isGroupMember = userGroupIds.contains(groupId);
                 final bool isPayer = paidBy == uid || (paidContributions != null && paidContributions.containsKey(uid));
                 final bool isSplitParticipant = shares != null && shares.containsKey(uid);
 
-                return isGroupMember || isPayer || isSplitParticipant;
+                // Strictly show expenses where logged in user is included
+                return isPayer || isSplitParticipant;
               }).toList();
 
               if (docs.isEmpty) {
                 return const Center(
-                  child: Text('No expense history found for your groups. Add an expense to get started!'),
+                  child: Padding(
+                    padding: EdgeInsets.all(24.0),
+                    child: Text(
+                      'No expense history found for your account.\nAdd or participate in an expense to get started!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  ),
                 );
               }
 
@@ -118,6 +124,19 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                 avatarBg = Colors.deepPurple.shade50;
               }
 
+              final paidBy = (data['paidBy'] ?? '').toString();
+              final paidContributions = data['paidContributions'] as Map<String, dynamic>?;
+              final shares = data['shares'] as Map<String, dynamic>?;
+
+              double userShare = 0.0;
+              if (shares != null && shares.containsKey(uid)) {
+                userShare = ((shares[uid] as num?)?.toDouble() ?? 0.0);
+              } else if (paidContributions != null && paidContributions.containsKey(uid)) {
+                userShare = ((paidContributions[uid] as num?)?.toDouble() ?? 0.0);
+              } else if (paidBy == uid) {
+                userShare = amount;
+              }
+
               return Dismissible(
                 key: Key(docId),
                 direction: DismissDirection.endToStart,
@@ -131,6 +150,7 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                   ),
                 ),
                 onDismissed: (direction) async {
+                  final messenger = ScaffoldMessenger.of(context);
                   // Temporarily store deleted data for undo functionality
                   final deletedData = Map<String, dynamic>.from(data);
 
@@ -141,41 +161,39 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                         .doc(docId)
                         .delete();
 
-                    // 2. Clean up from local Hive cache if present
-                    final cacheBox = Hive.box('expenses_cache');
-                    final hiveKey = cacheBox.keys.firstWhere(
-                      (k) => cacheBox.get(k)?['title'] == title && cacheBox.get(k)?['amount'] == amount,
-                      orElse: () => null,
-                    );
-                    if (hiveKey != null) {
-                      await cacheBox.delete(hiveKey);
+                    // Delete also from Hive cache
+                    final box = Hive.box('expenses_cache');
+                    final indexToDelete = box.values.toList().indexWhere((item) => item['id'] == docId);
+                    if (indexToDelete != -1) {
+                      await box.deleteAt(indexToDelete);
+                    }
+
+                    if (mounted) {
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Text('Deleted "$title"'),
+                          action: SnackBarAction(
+                            label: 'UNDO',
+                            textColor: Colors.amber,
+                            onPressed: () async {
+                              // Restore the deleted document
+                              try {
+                                await FirebaseFirestore.instance
+                                    .collection('expenses')
+                                    .doc(docId)
+                                    .set(deletedData);
+                              } catch (e) {
+                                debugPrint('Error restoring expense: $e');
+                              }
+                            },
+                          ),
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
                     }
                   } catch (e) {
                     debugPrint('Error deleting expense: $e');
-                  }
-
-                  // 3. Show SnackBar with Undo option
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Deleted "$title"'),
-                        action: SnackBarAction(
-                          label: 'UNDO',
-                          onPressed: () async {
-                            // Restore the document back to Firestore
-                            try {
-                              await FirebaseFirestore.instance
-                                  .collection('expenses')
-                                  .doc(docId)
-                                  .set(deletedData);
-                            } catch (e) {
-                              debugPrint('Error restoring expense: $e');
-                            }
-                          },
-                        ),
-                        duration: const Duration(seconds: 4),
-                      ),
-                    );
                   }
                 },
                 child: Card(
@@ -193,28 +211,38 @@ class _ExpenseHistoryScreenState extends State<ExpenseHistoryScreen> {
                       title,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: iconColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
+                    subtitle: Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 6.0,
+                        runSpacing: 2.0,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: iconColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              category,
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: iconColor),
+                            ),
                           ),
-                          child: Text(
-                            category,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: iconColor),
+                          Text(
+                            '• ${splitType.toString().toUpperCase()}',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '• ${splitType.toString().toUpperCase()}',
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                      ],
+                          if (userShare > 0 && (userShare - amount).abs() > 0.01)
+                            Text(
+                              '• Your Share: ₹${userShare.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 11, color: Colors.deepPurple, fontWeight: FontWeight.w500),
+                            ),
+                        ],
+                      ),
                     ),
                     trailing: Text(
-                      '\$${amount.toStringAsFixed(2)}',
+                      '₹${amount.toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,

@@ -98,7 +98,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
           ],
         ),
         content: Text(
-          'Successfully settled \$${amount.toStringAsFixed(2)} with $otherDisplayName. Net obligations across all groups have been updated.',
+          'Successfully settled ₹${amount.toStringAsFixed(2)} with $otherDisplayName. Net obligations across all groups have been updated.',
         ),
         actions: [
           TextButton(
@@ -361,7 +361,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          '\$${totalDueToPay.toStringAsFixed(2)}',
+                                          '₹${totalDueToPay.toStringAsFixed(2)}',
                                           style: TextStyle(
                                             fontSize: 22,
                                             fontWeight: FontWeight.bold,
@@ -459,7 +459,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Text(
-                                                  '\$${amount.toStringAsFixed(2)}',
+                                                  '₹${amount.toStringAsFixed(2)}',
                                                   style: const TextStyle(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.bold,
@@ -532,7 +532,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          '\$${totalDueToReceive.toStringAsFixed(2)}',
+                                          '₹${totalDueToReceive.toStringAsFixed(2)}',
                                           style: TextStyle(
                                             fontSize: 22,
                                             fontWeight: FontWeight.bold,
@@ -618,7 +618,7 @@ class _SettlementOptimizationScreenState extends State<SettlementOptimizationScr
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Text(
-                                                  '\$${amount.toStringAsFixed(2)}',
+                                                  '₹${amount.toStringAsFixed(2)}',
                                                   style: const TextStyle(
                                                     fontSize: 16,
                                                     fontWeight: FontWeight.bold,

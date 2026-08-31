@@ -94,13 +94,13 @@ class ExpenseProvider extends ChangeNotifier {
 
     final paidTotal = payers.values.fold(0.0, (a, b) => a + b);
     if ((paidTotal - totalAmount).abs() > 0.01) {
-      return "Payer amounts (\$${paidTotal.toStringAsFixed(2)}) must sum up to total (\$${totalAmount.toStringAsFixed(2)}).";
+      return "Payer amounts (₹${paidTotal.toStringAsFixed(2)}) must sum up to total (₹${totalAmount.toStringAsFixed(2)}).";
     }
 
     if (splitMode == SplitMode.specific) {
       final allocatedTotal = allocations.values.fold(0.0, (a, b) => a + b);
       if ((allocatedTotal - totalAmount).abs() > 0.01) {
-        return "Allocations (\$${allocatedTotal.toStringAsFixed(2)}) must match total (\$${totalAmount.toStringAsFixed(2)}).";
+        return "Allocations (₹${allocatedTotal.toStringAsFixed(2)}) must match total (₹${totalAmount.toStringAsFixed(2)}).";
       }
     } else if (splitMode == SplitMode.ratio) {
       final ratioTotal = allocations.values.fold(0.0, (a, b) => a + b);
